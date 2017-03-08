@@ -39,6 +39,8 @@
 #include "SDL\include\SDL.h"
 #include "SDL_image\include\SDL_image.h"
 #include "SDL_mixer\include\SDL_mixer.h"
+#include <iostream>
+#include <time.h>
 
 #pragma comment( lib, "SDL/libx86/SDL2.lib" )
 #pragma comment( lib, "SDL/libx86/SDL2main.lib" )
@@ -46,7 +48,7 @@
 #pragma comment( lib, "SDL_mixer/libx86/SDL2_mixer.lib" )
 
 // Globals --------------------------------------------------------
-#define SCREEN_WIDTH 640
+#define SCREEN_WIDTH 720
 #define SCREEN_HEIGHT 480
 #define SCROLL_SPEED 5
 #define SHIP_SPEED 3
@@ -54,6 +56,7 @@
 #define SHOT_SPEED 5
 #define Spawn_Delay 1
 #define Max_Enemies 3
+#define Enemy_Speed 4
 
 struct projectile
 {
@@ -200,7 +203,7 @@ void MoveStuff()
 }
 
 // ----------------------------------------------------------------
-void Draw()
+void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_sprite)
 {
 	SDL_Rect target;
 
@@ -229,16 +232,27 @@ void Draw()
 		}
 	}
 
+	// Draw enemies --
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		if (free_enemy[i] == false)
+		{
+			enemy_pos[i] -= Enemy_Speed;
+			enemy[i].x = enemy_pos[i];
+			SDL_RenderCopy(g.renderer, g.enemy_texture, enemy_sprite, &enemy[i]);
+		}
+	}
+
 	// Finally swap buffers
 	SDL_RenderPresent(g.renderer);
 }
 
 // ----------------------------------------------------------------
-void Timer(bool* spawn)
+void timer(bool* spawn)
 {
-	g.delay += 0.1;
+	g.delay += 1;
 
-	if (g.delay > (Spawn_Delay * 333))
+	if (g.delay > (Spawn_Delay * 175))
 	{
 		g.delay = 0;
 		*spawn = true;
@@ -250,11 +264,47 @@ void Timer(bool* spawn)
 }
 
 //-----------------------------------------------------------------
+void create_enemy(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos)
+{
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		if (free_enemy[i])
+		{
+			free_enemy[i] = false;
+			enemy[i].x = 720;
+			enemy[i].y = rand() % 400 + 30;
+			enemy_pos[i] = enemy[i].x;
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------
+void bullet_hit(SDL_Rect* enemy, bool* free_enemy, projectile bullet[])
+{
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		for (int j = 0; j < NUM_SHOTS; j++)
+		{
+			if (free_enemy[i] == false)
+			{
+				if (g.shots[j].alive && ((bullet[j].x + 50) > enemy[i].x && bullet[j].x < (enemy[i].x + 40)) && ((bullet[j].y + 25) > enemy[i].y && bullet[j].y < (enemy[i].y + 40)))
+				{
+					free_enemy[i] = true;
+					g.shots[j].alive = false;
+					//points += 5;
+				}
+			}
+		}
+	}
+}
+
+//-----------------------------------------------------------------
 
 int main(int argc, char* args[])
 {
 	Start();
-	
+
 	SDL_Rect enemy[Max_Enemies];
 	bool* free_enemy = (bool*)malloc(Max_Enemies * sizeof(bool));
 	for (int i = 0; i < Max_Enemies; i++)
@@ -267,11 +317,23 @@ int main(int argc, char* args[])
 	}
 	float* enemy_pos = (float*)calloc(Max_Enemies, sizeof(float));
 	bool spawn = false;
+	SDL_Rect enemy_sprite;
+	enemy_sprite.h = 31;
+	enemy_sprite.w = 31;
+	enemy_sprite.x = 98;
+	enemy_sprite.y = 65;
 
 	while(CheckInput())
 	{
+		timer(&spawn);
+		if (spawn)
+		{
+			create_enemy(&enemy[0], free_enemy, &enemy_pos[0]);
+		}
+		bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
+
 		MoveStuff();
-		Draw();
+		Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite);
 	}
 
 	Finish();
