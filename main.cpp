@@ -72,7 +72,7 @@ struct globals
 	SDL_Texture* background = nullptr;
 	SDL_Texture* ship = nullptr;
 	SDL_Texture* shot = nullptr;
-	SDL_Texture* enemy_texture = nullptr;
+	SDL_Texture* sprites_texture = nullptr;
 	SDL_Texture* texture_lives = nullptr;
 	SDL_Texture* gameover = nullptr;
 	SDL_Texture* ammo = nullptr;
@@ -87,6 +87,7 @@ struct globals
 	int scroll = 0;
 	projectile shots[NUM_SHOTS];
 	float delay = 0;
+	float expl_delay = 0;
 	char c_points[7];
 	int points = 0;
 	char score[43] = "QSS - Quick Side Scroller - Points: ";
@@ -95,6 +96,8 @@ struct globals
 	int enemy_counter = 0;
 	int enemy_lives[Max_Enemies];
 	int enemy_type[Max_Enemies];
+	bool explode[Max_Enemies];
+	bool expl = false;
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -111,7 +114,7 @@ void Start()
 	g.background = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/background.png"));
 	g.ship = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ship.png"));
 	g.shot = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/shot.png"));
-	g.enemy_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
+	g.sprites_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
 	g.texture_lives = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/heart.png"));
 	g.gameover = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/gameover.png"));
 	g.ammo = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ammo.png"));
@@ -133,6 +136,7 @@ void Start()
 	{
 		g.enemy_lives[i] = 1;
 		g.enemy_type[i] = 1;
+		g.explode[i] = false;
 	}
 }
 
@@ -275,7 +279,7 @@ void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_s
 				enemy_pos[i] -= (Enemy_Speed * 0.75);
 			}
 			enemy[i].x = enemy_pos[i];
-			SDL_RenderCopy(g.renderer, g.enemy_texture, &enemy_sprite[i], &enemy[i]);
+			SDL_RenderCopy(g.renderer, g.sprites_texture, &enemy_sprite[i], &enemy[i]);
 		}
 	}
 
@@ -296,11 +300,11 @@ void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_s
 	}
 
 	// Finally swap buffers
-	SDL_RenderPresent(g.renderer);
+	//SDL_RenderPresent(g.renderer);
 }
 
 // ----------------------------------------------------------------
-void timer(bool* spawn)
+void timer(bool* spawn, bool* expl)
 {
 	g.delay += 1;
 
@@ -312,6 +316,19 @@ void timer(bool* spawn)
 	else
 	{
 		*spawn = false;
+	}
+	//-----------------------------------
+
+	g.expl_delay += 1;
+
+	if (g.expl_delay > (8))
+	{
+		g.expl_delay = 0;
+		*expl = true;
+	}
+	else
+	{
+		*expl = false;
 	}
 }
 
@@ -374,6 +391,7 @@ void bullet_hit(SDL_Rect* enemy, bool* free_enemy, projectile bullet[])
 						{
 							g.points += 15;
 						}
+						g.explode[i] = true;
 					}
 					else
 					{
@@ -472,6 +490,33 @@ void draw_dead_screen()
 	SDL_RenderPresent(g.renderer);
 }
 
+//-----------------------------------------------------------------
+void draw_explosion(SDL_Rect* explosion, SDL_Rect* enemy)
+{
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		if (g.explode[i])
+		{
+ 			if (explosion[i].x == 192)
+			{
+				if (g.expl)
+				{
+					explosion[i].x = 225;
+				}
+			}
+			else
+			{
+				if (g.expl)
+				{
+					explosion[i].x = 192;
+					g.explode[i] = false;
+				}
+			}
+			SDL_RenderCopy(g.renderer, g.sprites_texture, &explosion[i], &enemy[i]);
+		}
+	}
+}
+
 int main(int argc, char* args[])
 {
 	Start();
@@ -506,6 +551,16 @@ int main(int argc, char* args[])
 		heart[i].y = 0;
 	}
 	//-------------------------------------------------------------------
+
+	SDL_Rect explosion[Max_Enemies];
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		explosion[i].h = 31;
+		explosion[i].w = 31;
+		explosion[i].x = 192;
+		explosion[i].y = 225;
+	}
+	//-------------------------------------------------------------------
 	g.bullet.h = 30;
 	g.bullet.w = 22;
 
@@ -515,11 +570,12 @@ int main(int argc, char* args[])
 		{
 			g.bullet.x = 0;
 			g.bullet.y = 455;
-			timer(&spawn); //comment to delete enemies
+			timer(&spawn, &g.expl); //comment to delete enemies
 			if (spawn)
 			{
 				create_enemy(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0]);
 			}
+
 			detect_end(&enemy[0], free_enemy);
 			bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
 
@@ -527,8 +583,10 @@ int main(int argc, char* args[])
 
 			detect_lose();
 
-
 			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0], &heart[0]);
+			draw_explosion(&explosion[0], &enemy[0]);
+
+			SDL_RenderPresent(g.renderer);
 		}
 		else
 		{
