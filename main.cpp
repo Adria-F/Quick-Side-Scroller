@@ -74,6 +74,7 @@ struct globals
 	SDL_Texture* shot = nullptr;
 	SDL_Texture* enemy_texture = nullptr;
 	SDL_Texture* texture_lives = nullptr;
+	SDL_Texture* gameover = nullptr;
 	int background_width = 0;
 	int ship_x = 0;
 	int ship_y = 0;
@@ -88,6 +89,7 @@ struct globals
 	int points = 0;
 	char score[43] = "QSS - Quick Side Scroller - Points: ";
 	int lives = Max_Lives;
+	bool dead = false;
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -106,6 +108,7 @@ void Start()
 	g.shot = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/shot.png"));
 	g.enemy_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
 	g.texture_lives = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/heart.png"));
+	g.gameover = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/gameover.png"));
 	SDL_QueryTexture(g.background, nullptr, nullptr, &g.background_width, nullptr);
 
 	// Create mixer --
@@ -370,6 +373,34 @@ void detect_end(SDL_Rect* enemy, bool* free_enemy)
 	}
 }
 
+//-----------------------------------------------------------------
+void detect_lose()
+{
+	if (g.lives == 0)
+	{
+		g.dead = true;
+	}
+}
+
+//-----------------------------------------------------------------
+void draw_dead_screen()
+{
+	SDL_Rect target;
+	g.scroll += SCROLL_SPEED;
+	if (g.scroll >= g.background_width)
+		g.scroll = 0;
+
+	target = { -g.scroll, 0, g.background_width, SCREEN_HEIGHT };
+	SDL_RenderCopy(g.renderer, g.background, nullptr, &target);
+	target.x += g.background_width;
+	SDL_RenderCopy(g.renderer, g.background, nullptr, &target);
+
+	target = { 0, 0, 720, 480 };
+	SDL_RenderCopy(g.renderer, g.gameover, NULL, &target);
+	
+	SDL_RenderPresent(g.renderer);
+}
+
 int main(int argc, char* args[])
 {
 	Start();
@@ -414,8 +445,17 @@ int main(int argc, char* args[])
 		bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
 
 		MoveStuff();
-		Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite, &heart[0]);
 
+		detect_lose();
+
+		if (g.dead == false)
+		{
+			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite, &heart[0]);
+		}
+		else
+		{
+			draw_dead_screen();
+		}
 		int_to_char(&g.c_points[0], g.points);
 		char_to_score(&g.score[0], g.c_points);
 		SDL_SetWindowTitle(g.window, g.score);
