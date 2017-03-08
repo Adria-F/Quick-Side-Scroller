@@ -82,6 +82,9 @@ struct globals
 	int scroll = 0;
 	projectile shots[NUM_SHOTS];
 	float delay = 0;
+	char c_points[7];
+	int points = 0;
+	char score[43] = "QSS - Quick Side Scroller - Points: ";
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -90,7 +93,7 @@ void Start()
 	SDL_Init(SDL_INIT_EVERYTHING);
 
 	// Create window & renderer
-	g.window = SDL_CreateWindow("QSS - Quick Side Scroller - 0.5", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+	g.window = SDL_CreateWindow("QSS - Quick Side Scroller - Points: 0", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 	g.renderer = SDL_CreateRenderer(g.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	// Load image lib --
@@ -292,7 +295,7 @@ void bullet_hit(SDL_Rect* enemy, bool* free_enemy, projectile bullet[])
 				{
 					free_enemy[i] = true;
 					g.shots[j].alive = false;
-					//points += 5;
+					g.points += 5;
 				}
 			}
 		}
@@ -300,6 +303,43 @@ void bullet_hit(SDL_Rect* enemy, bool* free_enemy, projectile bullet[])
 }
 
 //-----------------------------------------------------------------
+void int_to_char(char* str, int num)
+{
+	int result;
+	int length = 0;
+
+	for (int i = 1; i < 7; i++)
+	{
+		result = num;
+		result /= pow(10.0, i);
+		if (result != 0)
+		{
+			length++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	length++;
+	for (int i = 0; i < length; i++)
+	{
+		result = num;
+		result /= pow(10.0, (length - 1 - i));
+		str[i] = result + 48;
+		num -= result * pow(10.0, (length - 1 - i));
+	}
+	str[length] = '\0';
+}
+
+//-----------------------------------------------------------------
+void char_to_score(char* score, char points[])
+{
+	for (int i = 0; i < 7; i++)
+	{
+		score[36 + i] = points[i];
+	}
+}
 
 int main(int argc, char* args[])
 {
@@ -334,6 +374,10 @@ int main(int argc, char* args[])
 
 		MoveStuff();
 		Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite);
+
+		int_to_char(&g.c_points[0], g.points);
+		char_to_score(&g.score[0], g.c_points);
+		SDL_SetWindowTitle(g.window, g.score);
 	}
 
 	Finish();
