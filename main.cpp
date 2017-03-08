@@ -462,6 +462,15 @@ void detect_end(SDL_Rect* enemy, bool* free_enemy)
 					g.lives -= 1;
 				}
 			}
+			if (((g.ship_x + 64) > enemy[i].x) && (g.ship_x < (enemy[i].x + 50)) && (g.ship_y < (enemy[i].y + 50)) && ((g.ship_y + 64) > enemy[i].y))
+			{
+				free_enemy[i] = true;
+				if (g.lives > 0)
+				{
+					g.lives -= 1;
+				}
+				g.explode[i] = true;
+			}
 		}
 	}
 }
