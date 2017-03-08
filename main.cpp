@@ -52,7 +52,7 @@
 #define SCREEN_HEIGHT 480
 #define SCROLL_SPEED 5
 #define SHIP_SPEED 3
-#define NUM_SHOTS 32
+#define NUM_SHOTS 15
 #define SHOT_SPEED 5
 #define Spawn_Delay 1
 #define Max_Enemies 3
@@ -75,6 +75,8 @@ struct globals
 	SDL_Texture* enemy_texture = nullptr;
 	SDL_Texture* texture_lives = nullptr;
 	SDL_Texture* gameover = nullptr;
+	SDL_Texture* ammo = nullptr;
+	SDL_Rect bullet;
 	int background_width = 0;
 	int ship_x = 0;
 	int ship_y = 0;
@@ -109,6 +111,7 @@ void Start()
 	g.enemy_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
 	g.texture_lives = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/heart.png"));
 	g.gameover = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/gameover.png"));
+	g.ammo = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ammo.png"));
 	SDL_QueryTexture(g.background, nullptr, nullptr, &g.background_width, nullptr);
 
 	// Create mixer --
@@ -188,16 +191,23 @@ void MoveStuff()
 
 	if(g.fire)
 	{
-		Mix_PlayChannel(-1, g.fx_shoot, 0);
-		g.fire = false;
+		for (int i = 0; i < NUM_SHOTS; i++)
+		{
+			if (g.shots[i].alive == false)
+			{
+				Mix_PlayChannel(-1, g.fx_shoot, 0);
+				g.fire = false;
 
-		if(g.last_shot == NUM_SHOTS)
-			g.last_shot = 0;
+				if (g.last_shot == NUM_SHOTS)
+					g.last_shot = 0;
 
-		g.shots[g.last_shot].alive = true;
-		g.shots[g.last_shot].x = g.ship_x + 32;
-		g.shots[g.last_shot].y = g.ship_y;
-		++g.last_shot;
+				g.shots[g.last_shot].alive = true;
+				g.shots[g.last_shot].x = g.ship_x + 32;
+				g.shots[g.last_shot].y = g.ship_y;
+				++g.last_shot;
+				break;
+			}
+		}
 	}
 
 	for(int i = 0; i < NUM_SHOTS; ++i)
@@ -257,6 +267,16 @@ void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_s
 	for (int i = 0; i < g.lives; i++)
 	{
 		SDL_RenderCopy(g.renderer, g.texture_lives, NULL, &heart[i]);
+	}
+
+	// Draw ammo --
+	for (int i = 0; i < NUM_SHOTS; i++)
+	{
+		if (g.shots[i].alive == false)
+		{
+			SDL_RenderCopy(g.renderer, g.ammo, NULL, &g.bullet);
+			g.bullet.x += 15;
+		}
 	}
 
 	// Finally swap buffers
@@ -433,11 +453,15 @@ int main(int argc, char* args[])
 		heart[i].y = 0;
 	}
 	//-------------------------------------------------------------------
+	g.bullet.h = 30;
+	g.bullet.w = 22;
 
 	while(CheckInput())
 	{
 		if (g.dead == false)
 		{
+			g.bullet.x = 0;
+			g.bullet.y = 455;
 			timer(&spawn); //comment to delete enemies
 			if (spawn)
 			{
