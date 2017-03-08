@@ -54,9 +54,9 @@
 #define SHIP_SPEED 3
 #define NUM_SHOTS 15
 #define SHOT_SPEED 5
-#define Spawn_Delay 1
+#define Spawn_Delay 0.5
 #define Max_Enemies 3
-#define Enemy_Speed 4
+#define Enemy_Speed 5
 #define Max_Lives 3
 
 struct projectile
@@ -92,6 +92,9 @@ struct globals
 	char score[43] = "QSS - Quick Side Scroller - Points: ";
 	int lives = Max_Lives;
 	bool dead = false;
+	int enemy_counter = 0;
+	int enemy_lives[Max_Enemies];
+	int enemy_type[Max_Enemies];
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -125,6 +128,12 @@ void Start()
 	g.ship_x = 100;
 	g.ship_y = SCREEN_HEIGHT / 2;
 	g.fire = g.up = g.down = g.left = g.right = false;
+
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		g.enemy_lives[i] = 1;
+		g.enemy_type[i] = 1;
+	}
 }
 
 // ----------------------------------------------------------------
@@ -257,9 +266,16 @@ void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_s
 	{
 		if (free_enemy[i] == false)
 		{
-			enemy_pos[i] -= Enemy_Speed;
+			if (g.enemy_type[i] == 1)
+			{
+				enemy_pos[i] -= Enemy_Speed;
+			}
+			else
+			{
+				enemy_pos[i] -= (Enemy_Speed * 0.75);
+			}
 			enemy[i].x = enemy_pos[i];
-			SDL_RenderCopy(g.renderer, g.enemy_texture, enemy_sprite, &enemy[i]);
+			SDL_RenderCopy(g.renderer, g.enemy_texture, &enemy_sprite[i], &enemy[i]);
 		}
 	}
 
@@ -300,12 +316,32 @@ void timer(bool* spawn)
 }
 
 //-----------------------------------------------------------------
-void create_enemy(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos)
+void create_enemy(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_sprite)
 {
 	for (int i = 0; i < Max_Enemies; i++)
 	{
 		if (free_enemy[i])
 		{
+			if (g.enemy_counter == 3)
+			{
+				enemy[i].h = 64;
+				enemy[i].w = 64;
+				enemy_sprite[i].x = 129;
+				enemy_sprite[i].y = 159;
+				g.enemy_lives[i] = 2;
+				g.enemy_counter = 0;
+				g.enemy_type[i] = 2;
+			}
+			else
+			{
+				enemy[i].h = 50;
+				enemy[i].w = 50;
+				enemy_sprite[i].x = 98;
+				enemy_sprite[i].y = 65;
+				g.enemy_lives[i] = 1;
+				g.enemy_counter++;
+				g.enemy_type[i] = 1;
+			}
 			free_enemy[i] = false;
 			enemy[i].x = 720;
 			enemy[i].y = rand() % 400 + 30;
@@ -326,9 +362,24 @@ void bullet_hit(SDL_Rect* enemy, bool* free_enemy, projectile bullet[])
 			{
 				if (g.shots[j].alive && ((bullet[j].x + 50) > enemy[i].x && bullet[j].x < (enemy[i].x + 40)) && ((bullet[j].y + 25) > enemy[i].y && bullet[j].y < (enemy[i].y + 40)))
 				{
-					free_enemy[i] = true;
-					g.shots[j].alive = false;
-					g.points += 5;
+					if (g.enemy_lives[i] == 1)
+					{
+						free_enemy[i] = true;
+						g.shots[j].alive = false;
+						if (g.enemy_type[i] == 1)
+						{
+							g.points += 5;
+						}
+						else
+						{
+							g.points += 15;
+						}
+					}
+					else
+					{
+						g.shots[j].alive = false;
+						g.enemy_lives[i]--;
+					}
 				}
 			}
 		}
@@ -427,6 +478,7 @@ int main(int argc, char* args[])
 
 	SDL_Rect enemy[Max_Enemies];
 	bool* free_enemy = (bool*)malloc(Max_Enemies * sizeof(bool));
+	SDL_Rect enemy_sprite[Max_Enemies];
 	for (int i = 0; i < Max_Enemies; i++)
 	{
 		enemy[i].h = 50;
@@ -434,14 +486,15 @@ int main(int argc, char* args[])
 		enemy[i].x = 0;
 		enemy[i].y = 50;
 		free_enemy[i] = true;
+
+		enemy_sprite[i].h = 31;
+		enemy_sprite[i].w = 31;
+		enemy_sprite[i].x = 98;
+		enemy_sprite[i].y = 65;
 	}
 	float* enemy_pos = (float*)calloc(Max_Enemies, sizeof(float));
 	bool spawn = false;
-	SDL_Rect enemy_sprite;
-	enemy_sprite.h = 31;
-	enemy_sprite.w = 31;
-	enemy_sprite.x = 98;
-	enemy_sprite.y = 65;
+
 	//-------------------------------------------------------------------
 
 	SDL_Rect heart[Max_Lives];
@@ -465,7 +518,7 @@ int main(int argc, char* args[])
 			timer(&spawn); //comment to delete enemies
 			if (spawn)
 			{
-				create_enemy(&enemy[0], free_enemy, &enemy_pos[0]);
+				create_enemy(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0]);
 			}
 			detect_end(&enemy[0], free_enemy);
 			bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
@@ -475,7 +528,7 @@ int main(int argc, char* args[])
 			detect_lose();
 
 
-			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite, &heart[0]);
+			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0], &heart[0]);
 		}
 		else
 		{
