@@ -57,6 +57,7 @@
 #define Spawn_Delay 1
 #define Max_Enemies 3
 #define Enemy_Speed 4
+#define Max_Lives 3
 
 struct projectile
 {
@@ -72,6 +73,7 @@ struct globals
 	SDL_Texture* ship = nullptr;
 	SDL_Texture* shot = nullptr;
 	SDL_Texture* enemy_texture = nullptr;
+	SDL_Texture* texture_lives = nullptr;
 	int background_width = 0;
 	int ship_x = 0;
 	int ship_y = 0;
@@ -85,6 +87,7 @@ struct globals
 	char c_points[7];
 	int points = 0;
 	char score[43] = "QSS - Quick Side Scroller - Points: ";
+	int lives = Max_Lives;
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -102,6 +105,7 @@ void Start()
 	g.ship = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ship.png"));
 	g.shot = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/shot.png"));
 	g.enemy_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
+	g.texture_lives = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/heart.png"));
 	SDL_QueryTexture(g.background, nullptr, nullptr, &g.background_width, nullptr);
 
 	// Create mixer --
@@ -174,10 +178,10 @@ bool CheckInput()
 void MoveStuff()
 {
 	// Calc new ship position
-	if(g.up) g.ship_y -= SHIP_SPEED;
-	if(g.down) g.ship_y += SHIP_SPEED;
-	if(g.left) g.ship_x -= SHIP_SPEED;
-	if(g.right)	g.ship_x += SHIP_SPEED;
+	if(g.up && g.ship_y > 35) g.ship_y -= SHIP_SPEED;
+	if(g.down && g.ship_y < 416) g.ship_y += SHIP_SPEED;
+	if(g.left && g.ship_x > 0) g.ship_x -= SHIP_SPEED;
+	if(g.right && g.ship_x < 656)	g.ship_x += SHIP_SPEED;
 
 	if(g.fire)
 	{
@@ -206,7 +210,7 @@ void MoveStuff()
 }
 
 // ----------------------------------------------------------------
-void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_sprite)
+void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_sprite, SDL_Rect heart[])
 {
 	SDL_Rect target;
 
@@ -244,6 +248,12 @@ void Draw(SDL_Rect* enemy, bool* free_enemy, float* enemy_pos, SDL_Rect* enemy_s
 			enemy[i].x = enemy_pos[i];
 			SDL_RenderCopy(g.renderer, g.enemy_texture, enemy_sprite, &enemy[i]);
 		}
+	}
+
+	// Draw lives --
+	for (int i = 0; i < g.lives; i++)
+	{
+		SDL_RenderCopy(g.renderer, g.texture_lives, NULL, &heart[i]);
 	}
 
 	// Finally swap buffers
@@ -341,6 +351,25 @@ void char_to_score(char* score, char points[])
 	}
 }
 
+//-----------------------------------------------------------------
+void detect_end(SDL_Rect* enemy, bool* free_enemy)
+{
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		if (free_enemy[i] == false)
+		{
+			if (enemy[i].x <= 0)
+			{
+				free_enemy[i] = true;
+				if (g.lives > 0)
+				{
+					g.lives -= 1;
+				}
+			}
+		}
+	}
+}
+
 int main(int argc, char* args[])
 {
 	Start();
@@ -362,18 +391,30 @@ int main(int argc, char* args[])
 	enemy_sprite.w = 31;
 	enemy_sprite.x = 98;
 	enemy_sprite.y = 65;
+	//-------------------------------------------------------------------
+
+	SDL_Rect heart[Max_Lives];
+	for (int i = 0; i < Max_Lives; i++)
+	{
+		heart[i].h = 30;
+		heart[i].w = 30;
+		heart[i].x = 0 + (i * 35);
+		heart[i].y = 0;
+	}
+	//-------------------------------------------------------------------
 
 	while(CheckInput())
 	{
-		timer(&spawn);
+		timer(&spawn); //comment to delete enemies
 		if (spawn)
 		{
 			create_enemy(&enemy[0], free_enemy, &enemy_pos[0]);
 		}
+		detect_end(&enemy[0], free_enemy);
 		bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
 
 		MoveStuff();
-		Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite);
+		Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite, &heart[0]);
 
 		int_to_char(&g.c_points[0], g.points);
 		char_to_score(&g.score[0], g.c_points);
