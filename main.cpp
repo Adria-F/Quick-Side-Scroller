@@ -76,6 +76,7 @@ struct globals
 	SDL_Texture* texture_lives = nullptr;
 	SDL_Texture* gameover = nullptr;
 	SDL_Texture* ammo = nullptr;
+	SDL_Texture* tutorial = nullptr;
 	SDL_Rect bullet;
 	int background_width = 0;
 	int ship_x = 0;
@@ -98,6 +99,7 @@ struct globals
 	int enemy_type[Max_Enemies];
 	bool explode[Max_Enemies];
 	bool expl = false;
+	bool start = false;
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -118,6 +120,7 @@ void Start()
 	g.texture_lives = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/heart.png"));
 	g.gameover = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/gameover.png"));
 	g.ammo = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ammo.png"));
+	g.tutorial = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/tutorial.png"));
 	SDL_QueryTexture(g.background, nullptr, nullptr, &g.background_width, nullptr);
 
 	// Create mixer --
@@ -184,6 +187,7 @@ bool CheckInput()
 				case SDLK_RIGHT: g.right = true; break;
 				case SDLK_ESCAPE: ret = false; break;
 				case SDLK_SPACE: g.fire = (event.key.repeat == 0); break;
+				case SDLK_RETURN: g.start = true; break;
 			}
 		}
 		else if (event.type == SDL_QUIT)
@@ -564,33 +568,48 @@ int main(int argc, char* args[])
 	g.bullet.h = 30;
 	g.bullet.w = 22;
 
+	SDL_Rect bckg;
+	bckg.h = 480;
+	bckg.w = 720;
+	bckg.x = 0;
+	bckg.y = 0;
+
 	while(CheckInput())
 	{
-		if (g.dead == false)
+		if (g.start)
 		{
-			g.bullet.x = 0;
-			g.bullet.y = 455;
-			timer(&spawn, &g.expl); //comment to delete enemies
-			if (spawn)
+			if (g.dead == false)
 			{
-				create_enemy(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0]);
+				g.bullet.x = 0;
+				g.bullet.y = 455;
+				timer(&spawn, &g.expl); //comment to delete enemies
+				if (spawn)
+				{
+					create_enemy(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0]);
+				}
+
+				detect_end(&enemy[0], free_enemy);
+				bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
+
+				MoveStuff();
+
+				detect_lose();
+
+				Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0], &heart[0]);
+				draw_explosion(&explosion[0], &enemy[0]);
+
+				SDL_RenderPresent(g.renderer);
 			}
-
-			detect_end(&enemy[0], free_enemy);
-			bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
-
-			MoveStuff();
-
-			detect_lose();
-
-			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite[0], &heart[0]);
-			draw_explosion(&explosion[0], &enemy[0]);
-
-			SDL_RenderPresent(g.renderer);
+			else
+			{
+				draw_dead_screen();
+			}
 		}
 		else
 		{
-			draw_dead_screen();
+			SDL_RenderCopy(g.renderer, g.tutorial, NULL, &bckg);
+
+			SDL_RenderPresent(g.renderer);
 		}
 		int_to_char(&g.c_points[0], g.points);
 		char_to_score(&g.score[0], g.c_points);
