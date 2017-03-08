@@ -436,20 +436,21 @@ int main(int argc, char* args[])
 
 	while(CheckInput())
 	{
-		timer(&spawn); //comment to delete enemies
-		if (spawn)
-		{
-			create_enemy(&enemy[0], free_enemy, &enemy_pos[0]);
-		}
-		detect_end(&enemy[0], free_enemy);
-		bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
-
-		MoveStuff();
-
-		detect_lose();
-
 		if (g.dead == false)
 		{
+			timer(&spawn); //comment to delete enemies
+			if (spawn)
+			{
+				create_enemy(&enemy[0], free_enemy, &enemy_pos[0]);
+			}
+			detect_end(&enemy[0], free_enemy);
+			bullet_hit(&enemy[0], free_enemy, &g.shots[0]);
+
+			MoveStuff();
+
+			detect_lose();
+
+
 			Draw(&enemy[0], free_enemy, &enemy_pos[0], &enemy_sprite, &heart[0]);
 		}
 		else
