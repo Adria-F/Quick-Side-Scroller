@@ -52,6 +52,8 @@
 #define SHIP_SPEED 3
 #define NUM_SHOTS 32
 #define SHOT_SPEED 5
+#define Spawn_Delay 1
+#define Max_Enemies 3
 
 struct projectile
 {
@@ -66,6 +68,7 @@ struct globals
 	SDL_Texture* background = nullptr;
 	SDL_Texture* ship = nullptr;
 	SDL_Texture* shot = nullptr;
+	SDL_Texture* enemy_texture = nullptr;
 	int background_width = 0;
 	int ship_x = 0;
 	int ship_y = 0;
@@ -75,6 +78,7 @@ struct globals
 	Mix_Chunk* fx_shoot = nullptr;
 	int scroll = 0;
 	projectile shots[NUM_SHOTS];
+	float delay = 0;
 } g; // automatically create an insteance called "g"
 
 // ----------------------------------------------------------------
@@ -91,6 +95,7 @@ void Start()
 	g.background = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/background.png"));
 	g.ship = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/ship.png"));
 	g.shot = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/shot.png"));
+	g.enemy_texture = SDL_CreateTextureFromSurface(g.renderer, IMG_Load("assets/sprites.png"));
 	SDL_QueryTexture(g.background, nullptr, nullptr, &g.background_width, nullptr);
 
 	// Create mixer --
@@ -229,9 +234,39 @@ void Draw()
 }
 
 // ----------------------------------------------------------------
+void Timer(bool* spawn)
+{
+	g.delay += 0.1;
+
+	if (g.delay > (Spawn_Delay * 333))
+	{
+		g.delay = 0;
+		*spawn = true;
+	}
+	else
+	{
+		*spawn = false;
+	}
+}
+
+//-----------------------------------------------------------------
+
 int main(int argc, char* args[])
 {
 	Start();
+	
+	SDL_Rect enemy[Max_Enemies];
+	bool* free_enemy = (bool*)malloc(Max_Enemies * sizeof(bool));
+	for (int i = 0; i < Max_Enemies; i++)
+	{
+		enemy[i].h = 50;
+		enemy[i].w = 50;
+		enemy[i].x = 0;
+		enemy[i].y = 50;
+		free_enemy[i] = true;
+	}
+	float* enemy_pos = (float*)calloc(Max_Enemies, sizeof(float));
+	bool spawn = false;
 
 	while(CheckInput())
 	{
